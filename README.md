@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/MOSconfig/scout/releases/latest">Download</a> ·
+  <a href="https://github.com/ForYouzi/scout/releases/latest">Download</a> ·
   <a href="DEVELOPMENT.md">Build from source</a> ·
   <a href="#license">License</a>
 </p>
@@ -17,11 +17,11 @@
 Scout is a community build of [Yaak](https://github.com/mountain-loop/yaak), kept in sync with upstream.
 It ships its own name, icon, and app identifier, so it installs next to Yaak without sharing data.
 Scout builds leave out Yaak's auto-updater and license check; new versions are published on the
-[Releases page](https://github.com/MOSconfig/scout/releases).
+[Releases page](https://github.com/ForYouzi/scout/releases).
 
 ## Install
 
-Download the installer for your platform from [Releases](https://github.com/MOSconfig/scout/releases/latest).
+Download the installer for your platform from [Releases](https://github.com/ForYouzi/scout/releases/latest).
 Each release includes a `SHA256SUMS` file to verify downloads (`shasum -a 256 -c SHA256SUMS`).
 
 | Platform | File |
@@ -86,7 +86,7 @@ Scout-specific files are kept separate to keep merges small: the release workflo
 
 - [Yaak documentation](https://yaak.app/docs) – applies to Scout too
 - [Local development setup](DEVELOPMENT.md)
-- [Scout releases](https://github.com/MOSconfig/scout/releases)
+- [Scout releases](https://github.com/ForYouzi/scout/releases)
 
 ## License
 
