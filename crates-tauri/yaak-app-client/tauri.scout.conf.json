@@ -16,7 +16,7 @@
     "active": true,
     "publisher": "Scout",
     "copyright": "Scout contributors. Based on Yaak (MIT).",
-    "homepage": "https://github.com/MOSconfig/yaak",
+    "homepage": "https://github.com/MOSconfig/scout",
     "license": "MIT",
     "category": "DeveloperTool",
     "shortDescription": "A fast, offline-first API client",
