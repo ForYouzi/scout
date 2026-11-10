@@ -11,7 +11,7 @@ permissions:
 jobs:
   test:
     name: Lint/Test
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: voidzero-dev/setup-vp@v1
