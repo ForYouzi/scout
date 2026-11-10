@@ -84,9 +84,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Both macOS legs run on Intel runners and cross-compile with --target. GitHub's hosted
+        # macOS arm64 pool is capacity-constrained and cancels jobs it cannot place ("not acquired
+        # by Runner of type hosted"), which would leave a release without its macOS installers.
         include:
-          - { os: macos, arch: aarch64, yaak_arch: arm64, runner: macos-latest, target: aarch64-apple-darwin, bundles: dmg }
-          - { os: macos, arch: x64, yaak_arch: x64, runner: macos-latest, target: x86_64-apple-darwin, bundles: dmg }
+          - { os: macos, arch: aarch64, yaak_arch: arm64, runner: macos-15-intel, target: aarch64-apple-darwin, bundles: dmg }
+          - { os: macos, arch: x64, yaak_arch: x64, runner: macos-15-intel, target: x86_64-apple-darwin, bundles: dmg }
           - { os: linux, arch: x86_64, yaak_arch: x64, runner: ubuntu-22.04, target: "", bundles: "deb,rpm,appimage" }
           - { os: linux, arch: aarch64, yaak_arch: arm64, runner: ubuntu-22.04-arm, target: "", bundles: "deb,rpm,appimage" }
           - { os: windows, arch: x64, yaak_arch: x64, runner: windows-latest, target: "", bundles: nsis }
