@@ -16,7 +16,7 @@ export function useSyncWorkspaceRequestTitle() {
 
   useEffect(() => {
     const settings = jotaiStore.get(settingsAtom);
-    let newTitle = activeWorkspace ? activeWorkspace.name : "Yaak";
+    let newTitle = activeWorkspace ? activeWorkspace.name : appInfo.name;
     if (activeEnvironment) {
       newTitle += ` (${activeEnvironment.name})`;
     }

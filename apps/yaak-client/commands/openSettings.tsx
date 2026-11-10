@@ -1,6 +1,7 @@
 import { platform } from "@yaakapp-internal/platform";
 import type { SettingsTab, SettingsTabWithSubtab } from "../components/Settings/Settings";
 import { activeWorkspaceIdAtom } from "../hooks/useActiveWorkspace";
+import { appInfo } from "../lib/appInfo";
 import { createFastMutation } from "../hooks/useFastMutation";
 import { showDialog } from "../lib/dialog";
 import { jotaiStore } from "../lib/jotai";
@@ -41,7 +42,7 @@ export const openSettings = createFastMutation<void, string, SettingsTabWithSubt
     await rpc("cmd_new_child_window", {
       url: location.href,
       label: "settings",
-      title: "Yaak Settings",
+      title: `${appInfo.name} Settings`,
       innerSize: [750, 600],
     });
   },
