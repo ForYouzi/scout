@@ -1,15 +1,12 @@
 // Listen for settings changes, the re-compute theme
 import { platform } from "@yaakapp-internal/platform";
 import type { ModelPayload, Settings } from "@yaakapp-internal/models";
+import { applyFonts } from "./lib/cssFontFamily";
 import { fireAndForget } from "./lib/fireAndForget";
 import { getSettings } from "./lib/settings";
 
 function setFonts(settings: Settings) {
-  document.documentElement.style.setProperty("--font-family-editor", settings.editorFont ?? "");
-  document.documentElement.style.setProperty(
-    "--font-family-interface",
-    settings.interfaceFont ?? "",
-  );
+  applyFonts(document.documentElement.style, settings);
 }
 
 platform.listen<ModelPayload[]>("model_writes", (payloads) => {
