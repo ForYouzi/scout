@@ -1,42 +1,47 @@
 <p align="center">
-  <a href="https://github.com/JamesIves/github-sponsors-readme-action">
-    <img width="200px" src="https://github.com/mountain-loop/yaak/raw/main/crates-tauri/yaak-app-client/icons/icon.png">
-  </a>
+  <img width="200px" src="crates-tauri/yaak-app-client/icons/scout.png" alt="Scout icon">
 </p>
 
-<h1 align="center">
-  💫 Yaak ➟ Desktop API Client 💫
-</h1>
+<h1 align="center">Scout</h1>
 
 <p align="center">
-    A fast, privacy-first API client for REST, GraphQL, SSE, WebSocket, and gRPC – built with Tauri, Rust, and React.
-</p>
-<p align="center">
- Development is funded by community-purchased <a href="https://yaak.app/pricing">licenses</a>. You can also <a href="https://github.com/sponsors/gschier">become a sponsor</a> to have your logo appear below. 💖
-</p>
-<br>
-
-<p align="center">
-  <!-- sponsors-premium --><a href="https://github.com/MVST-Solutions"><img src="https:&#x2F;&#x2F;github.com&#x2F;MVST-Solutions.png" width="80px" alt="User avatar: MVST-Solutions" /></a>&nbsp;&nbsp;<a href="https://github.com/dharsanb"><img src="https:&#x2F;&#x2F;github.com&#x2F;dharsanb.png" width="80px" alt="User avatar: dharsanb" /></a>&nbsp;&nbsp;<a href="https://github.com/railwayapp"><img src="https:&#x2F;&#x2F;github.com&#x2F;railwayapp.png" width="80px" alt="User avatar: railwayapp" /></a>&nbsp;&nbsp;<a href="https://github.com/caseyamcl"><img src="https:&#x2F;&#x2F;github.com&#x2F;caseyamcl.png" width="80px" alt="User avatar: caseyamcl" /></a>&nbsp;&nbsp;<a href="https://github.com/bytebase"><img src="https:&#x2F;&#x2F;github.com&#x2F;bytebase.png" width="80px" alt="User avatar: bytebase" /></a>&nbsp;&nbsp;<a href="https://github.com/rauchg"><img src="https:&#x2F;&#x2F;github.com&#x2F;rauchg.png" width="80px" alt="User avatar: rauchg" /></a>&nbsp;&nbsp;<a href="https://github.com/"><img src="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;JamesIves&#x2F;github-sponsors-readme-action&#x2F;dev&#x2F;.github&#x2F;assets&#x2F;placeholder.png" width="80px" alt="User avatar: " /></a>&nbsp;&nbsp;<!-- sponsors-premium -->
-</p>
-<p align="center">
-  <!-- sponsors-base --><a href="https://github.com/seanwash"><img src="https:&#x2F;&#x2F;github.com&#x2F;seanwash.png" width="50px" alt="User avatar: seanwash" /></a>&nbsp;&nbsp;<a href="https://github.com/jerath"><img src="https:&#x2F;&#x2F;github.com&#x2F;jerath.png" width="50px" alt="User avatar: jerath" /></a>&nbsp;&nbsp;<a href="https://github.com/itsa-sh"><img src="https:&#x2F;&#x2F;github.com&#x2F;itsa-sh.png" width="50px" alt="User avatar: itsa-sh" /></a>&nbsp;&nbsp;<a href="https://github.com/dmmulroy"><img src="https:&#x2F;&#x2F;github.com&#x2F;dmmulroy.png" width="50px" alt="User avatar: dmmulroy" /></a>&nbsp;&nbsp;<a href="https://github.com/timcole"><img src="https:&#x2F;&#x2F;github.com&#x2F;timcole.png" width="50px" alt="User avatar: timcole" /></a>&nbsp;&nbsp;<a href="https://github.com/VLZH"><img src="https:&#x2F;&#x2F;github.com&#x2F;VLZH.png" width="50px" alt="User avatar: VLZH" /></a>&nbsp;&nbsp;<a href="https://github.com/terasaka2k"><img src="https:&#x2F;&#x2F;github.com&#x2F;terasaka2k.png" width="50px" alt="User avatar: terasaka2k" /></a>&nbsp;&nbsp;<a href="https://github.com/andriyor"><img src="https:&#x2F;&#x2F;github.com&#x2F;andriyor.png" width="50px" alt="User avatar: andriyor" /></a>&nbsp;&nbsp;<a href="https://github.com/majudhu"><img src="https:&#x2F;&#x2F;github.com&#x2F;majudhu.png" width="50px" alt="User avatar: majudhu" /></a>&nbsp;&nbsp;<a href="https://github.com/axelrindle"><img src="https:&#x2F;&#x2F;github.com&#x2F;axelrindle.png" width="50px" alt="User avatar: axelrindle" /></a>&nbsp;&nbsp;<a href="https://github.com/jirizverina"><img src="https:&#x2F;&#x2F;github.com&#x2F;jirizverina.png" width="50px" alt="User avatar: jirizverina" /></a>&nbsp;&nbsp;<a href="https://github.com/chip-well"><img src="https:&#x2F;&#x2F;github.com&#x2F;chip-well.png" width="50px" alt="User avatar: chip-well" /></a>&nbsp;&nbsp;<a href="https://github.com/GRAYAH"><img src="https:&#x2F;&#x2F;github.com&#x2F;GRAYAH.png" width="50px" alt="User avatar: GRAYAH" /></a>&nbsp;&nbsp;<a href="https://github.com/flashblaze"><img src="https:&#x2F;&#x2F;github.com&#x2F;flashblaze.png" width="50px" alt="User avatar: flashblaze" /></a>&nbsp;&nbsp;<a href="https://github.com/Frostist"><img src="https:&#x2F;&#x2F;github.com&#x2F;Frostist.png" width="50px" alt="User avatar: Frostist" /></a>&nbsp;&nbsp;<a href="https://github.com/PurplProto"><img src="https:&#x2F;&#x2F;github.com&#x2F;PurplProto.png" width="50px" alt="User avatar: PurplProto" /></a>&nbsp;&nbsp;<!-- sponsors-base -->
+  A fast, offline-first desktop API client for REST, GraphQL, SSE, WebSocket, and gRPC – built with Tauri, Rust, and React.
 </p>
 
-![Yaak API Client](https://yaak.app/static/screenshot.png)
+<p align="center">
+  <a href="https://github.com/MOSconfig/yaak/releases/latest">Download</a> ·
+  <a href="DEVELOPMENT.md">Build from source</a> ·
+  <a href="#license">License</a>
+</p>
+
+Scout is a community build of [Yaak](https://github.com/mountain-loop/yaak), kept in sync with upstream.
+It ships its own name, icon, and app identifier, so it installs next to Yaak without sharing data.
+Scout builds leave out Yaak's auto-updater and license check; new versions are published on the
+[Releases page](https://github.com/MOSconfig/yaak/releases).
 
 ## Install
 
-Download Yaak for macOS, Windows, or Linux from [yaak.app/download](https://yaak.app/download). Package managers and other install methods are in the [installation docs](https://yaak.app/docs/getting-started/installation).
+Download the installer for your platform from [Releases](https://github.com/MOSconfig/yaak/releases/latest).
+Each release includes a `SHA256SUMS` file to verify downloads (`shasum -a 256 -c SHA256SUMS`).
+
+| Platform | File |
+| --- | --- |
+| macOS (Apple Silicon) | `Scout_<version>_macos_aarch64.dmg` |
+| macOS (Intel) | `Scout_<version>_macos_x64.dmg` |
+| Windows (x64 / ARM64) | `Scout_<version>_windows_x64-setup.exe` / `..._windows_arm64-setup.exe` |
+| Linux (x64 / ARM64) | `Scout_<version>_linux_<x86_64\|aarch64>.deb`, `.rpm`, or `.AppImage` |
+
+Scout builds are not code-signed, so your OS will warn the first time you open them:
+
+- **macOS:** after moving Scout to Applications, run `xattr -dr com.apple.quarantine /Applications/Scout.app`, or right-click the app and choose **Open**.
+- **Windows:** on the SmartScreen prompt, choose **More info → Run anyway**.
+- **Linux:** for the AppImage, run `chmod +x Scout_*.AppImage` first.
 
 ## Features
 
-Yaak is an offline-first API client designed to stay out of your way while giving you everything you need when you need it.
-Built with [Tauri](https://tauri.app), Rust, and React, it’s fast, lightweight, and private. No telemetry, no VC funding, and no cloud lock-in.
-
 ### 🌐 Work with any API
 
-- Import collections from Postman, Insomnia, OpenAPI, Swagger, or Curl.
+- Import collections from Postman, Insomnia, OpenAPI, Swagger, Bruno, or Curl.
 - Send requests via REST, GraphQL, gRPC, WebSocket, or Server-Sent Events.
 - Filter and inspect responses with JSONPath or XPath.
 
@@ -58,23 +63,32 @@ Built with [Tauri](https://tauri.app), Rust, and React, it’s fast, lightweight
 - Pick from built-in themes or build your own.
 - Create plugins to extend authentication, template tags, or the UI.
 
-## Contribution Policy
+## Releasing
 
-> [!IMPORTANT]
-> Community PRs are currently limited to bug fixes.
-> If your PR is not a bug fix, link the [feedback item](https://yaak.app/feedback) where @gschier explicitly gave you permission to work on it.
-> See [`CONTRIBUTING.md`](CONTRIBUTING.md) for policy details and [`DEVELOPMENT.md`](DEVELOPMENT.md) for local setup.
+Releases are built by [`.github/workflows/release-scout.yml`](.github/workflows/release-scout.yml).
+Push a tag named `scout-v<version>` (for example `scout-v2026.11.0`, or `scout-v2026.11.0-beta.1` for a prerelease)
+on a commit that is on `main`. The workflow builds macOS, Windows, and Linux installers, then publishes them with
+`SHA256SUMS` as a GitHub Release. Pull requests that change the workflow run the same builds without publishing.
 
-## Useful Resources
+Upstream `v*` tags are ignored, so syncing from Yaak never triggers a Scout release.
 
-- [Feedback and Bug Reports](https://feedback.yaak.app)
-- [Documentation](https://yaak.app/docs)
-- [Yaak vs Postman](https://yaak.app/alternatives/postman)
-- [Yaak vs Bruno](https://yaak.app/alternatives/bruno)
-- [Yaak vs Insomnia](https://yaak.app/alternatives/insomnia)
+## Syncing with upstream
+
+```sh
+git remote add upstream https://github.com/mountain-loop/yaak.git   # once
+git fetch upstream
+git switch main && git merge upstream/main
+```
+
+Scout-specific files are kept separate to keep merges small: the release workflow, `crates-tauri/yaak-app-client/tauri.scout.conf.json`, and `crates-tauri/yaak-app-client/icons/scout*`.
+
+## Useful resources
+
+- [Yaak documentation](https://yaak.app/docs) – applies to Scout too
+- [Local development setup](DEVELOPMENT.md)
+- [Scout releases](https://github.com/MOSconfig/yaak/releases)
 
 ## License
 
-The source is [MIT licensed](LICENSE) and can be built and run for free, for both personal and commercial use.
-
-The prebuilt binaries follow Yaak's [pricing terms](https://yaak.app/pricing): free for personal use, license required for commercial use.
+Scout is based on Yaak and is distributed under the [MIT license](LICENSE), copyright (c) 2024 Yaak.
+Scout builds are produced from source by this fork and are not official Yaak releases.

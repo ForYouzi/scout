@@ -1,0 +1,42 @@
+{
+  "productName": "Scout",
+  "mainBinaryName": "scout",
+  "identifier": "io.github.mosconfig.scout",
+  "build": {
+    "features": ["wry"]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["scout"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "publisher": "Scout",
+    "copyright": "Scout contributors. Based on Yaak (MIT).",
+    "homepage": "https://github.com/MOSconfig/yaak",
+    "license": "MIT",
+    "category": "DeveloperTool",
+    "shortDescription": "A fast, offline-first API client",
+    "longDescription": "A cross-platform desktop app for REST, GraphQL, gRPC, WebSocket, and Server-Sent Events",
+    "createUpdaterArtifacts": false,
+    "icon": [
+      "icons/scout/32x32.png",
+      "icons/scout/128x128.png",
+      "icons/scout/128x128@2x.png",
+      "icons/scout/icon.icns",
+      "icons/scout/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "signingIdentity": "-",
+      "entitlements": "macos/entitlements.plist"
+    },
+    "linux": {
+      "deb": { "desktopTemplate": "./scout.desktop" },
+      "rpm": { "desktopTemplate": "./scout.desktop" }
+    }
+  }
+}

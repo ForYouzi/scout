@@ -1,0 +1,10 @@
+[Desktop Entry]
+Categories={{categories}}
+Comment={{comment}}
+Exec={{exec}} %u
+Icon={{icon}}
+Name={{name}}
+StartupWMClass={{exec}}
+Terminal=false
+Type=Application
+MimeType=x-scheme-handler/scout;

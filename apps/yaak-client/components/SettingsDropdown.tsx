@@ -64,7 +64,7 @@ export function SettingsDropdown() {
           leftSlot: <Icon icon="rocket" />,
           onSelect: () => platform.openUrl("https://yaak.app/button/new"),
         },
-        { type: "separator", label: `Yaak v${appInfo.version}` },
+        { type: "separator", label: `${appInfo.name} v${appInfo.version}` },
         {
           label: "Check for Updates",
           leftSlot: <Icon icon="update" />,

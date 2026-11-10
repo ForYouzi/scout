@@ -95,6 +95,7 @@
     "icons": "run-p client:icons:*",
     "client:icons:dev": "tauri icon crates-tauri/yaak-app-client/icons/icon-dev.png --output crates-tauri/yaak-app-client/icons/dev",
     "client:icons:release": "tauri icon crates-tauri/yaak-app-client/icons/icon.png --output crates-tauri/yaak-app-client/icons/release",
+    "client:icons:scout": "rsvg-convert -w 1024 -h 1024 crates-tauri/yaak-app-client/icons/scout.svg -o crates-tauri/yaak-app-client/icons/scout.png && tauri icon crates-tauri/yaak-app-client/icons/scout.png --output crates-tauri/yaak-app-client/icons/scout",
     "bootstrap": "run-s bootstrap:*",
     "bootstrap:install-wasm-pack": "node scripts/install-wasm-pack.cjs",
     "bootstrap:build": "npm run build",
