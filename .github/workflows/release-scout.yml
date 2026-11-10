@@ -222,7 +222,8 @@ jobs:
         run: |
           deb=(scout-dist/*.deb)
           dpkg-deb -c "${deb[0]}" | tee "$RUNNER_TEMP/deb.txt"
-          grep -q "./usr/bin/scout$" "$RUNNER_TEMP/deb.txt" || { echo "::error::deb has no /usr/bin/scout"; exit 1; }
+          # dpkg-deb -c lists paths with or without a leading "./" depending on how the deb was built.
+          grep -qE " (\./)?usr/bin/scout$" "$RUNNER_TEMP/deb.txt" || { echo "::error::deb has no /usr/bin/scout"; exit 1; }
           if grep -q "yaak-app-client" "$RUNNER_TEMP/deb.txt"; then
             echo "::error::deb still installs yaak-app-client paths"; exit 1
           fi
