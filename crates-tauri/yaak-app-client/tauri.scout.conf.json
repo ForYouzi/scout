@@ -1,7 +1,7 @@
 {
   "productName": "Scout",
   "mainBinaryName": "scout",
-  "identifier": "io.github.mosconfig.scout",
+  "identifier": "io.github.foryouzi.scout",
   "build": {
     "features": ["wry"]
   },
@@ -16,7 +16,7 @@
     "active": true,
     "publisher": "Scout",
     "copyright": "Scout contributors. Based on Yaak (MIT).",
-    "homepage": "https://github.com/MOSconfig/scout",
+    "homepage": "https://github.com/ForYouzi/scout",
     "license": "MIT",
     "category": "DeveloperTool",
     "shortDescription": "A fast, offline-first API client",
