@@ -266,11 +266,13 @@ fn has_family(face: &fontdb::FaceInfo, family_key: &str) -> bool {
     face.families.iter().any(|(family, _)| family.to_lowercase() == family_key)
 }
 
-/// Whether every registry font that may belong to the family loaded completely. An entry may
-/// belong to it when its name starts with one of the family's names (fontdb's, or the legacy and
-/// typographic names its faces declare) or when its file holds a face of the family. Such a file
-/// must have loaded as many faces as it contains: a face that didn't load may be one of the
-/// family's styles, and registering the rest would leave that style out.
+/// Whether no registry font that may hold one of the family's styles is only partly loaded. A file
+/// that loaded fewer faces than its header lists may be missing one of the family's styles when
+/// the file already gave a face of the family, its registry name mentions one of the family's
+/// names (fontdb's, or the legacy and typographic names its faces declare), or one of its faces
+/// declares such a name. Registering the rest of the family would then leave that style out.
+/// shortcut: a face that didn't load and whose name table can't be read either is only caught by
+/// the registry name; upgrade to DirectWrite's family grouping if that is ever reported.
 fn registry_complete(db: &fontdb::Database, registry: &[RegistryFont], family_key: &str) -> bool {
     let mut names: HashSet<String> = HashSet::from([family_key.to_string()]);
     let mut family_files = HashSet::new();
@@ -292,18 +294,28 @@ fn registry_complete(db: &fontdb::Database, registry: &[RegistryFont], family_ke
 
     registry.iter().all(|font| {
         let key = path_key(&font.path);
-        let entry = font.name.to_lowercase();
-        let relevant = family_files.contains(&key)
-            || names.iter().any(|name| entry.starts_with(name.as_str()));
-        if !relevant {
-            return true;
-        }
         let (count, path) = match loaded.get(&key) {
             Some((count, path)) => (*count, path.as_path()),
             None => (0, font.path.as_path()),
         };
-        faces_in_file(path) == Some(count)
+        if faces_in_file(path) == Some(count) {
+            return true;
+        }
+        let entry = font.name.to_lowercase();
+        let relevant = family_files.contains(&key)
+            || names.iter().any(|name| entry.contains(name.as_str()))
+            || declared_families(path).iter().any(|name| names.contains(&name.to_lowercase()));
+        !relevant
     })
+}
+
+/// Every family name (IDs 1 and 16) any face in the file declares, read without fontdb.
+fn declared_families(path: &Path) -> Vec<String> {
+    let Ok(data) = std::fs::read(path) else {
+        return Vec::new();
+    };
+    let faces = ttf_parser::fonts_in_collection(&data).unwrap_or(1);
+    (0..faces).flat_map(|index| family_names(&data, index)).collect()
 }
 
 /// How many faces a font file holds, from its header; None when the file can't be opened.
@@ -434,6 +446,8 @@ mod tests {
         /// Windows encoding ID of the full-name record (1 = BMP, 10 = full repertoire).
         full_encoding: u16,
         os2: bool,
+        /// fontdb skips a face with no PostScript name record.
+        postscript_record: bool,
     }
 
     impl TestFont {
@@ -451,6 +465,7 @@ mod tests {
                 variable: false,
                 full_encoding: 1,
                 os2: true,
+                postscript_record: true,
             }
         }
 
@@ -489,6 +504,11 @@ mod tests {
             self
         }
 
+        fn without_postscript(mut self) -> Self {
+            self.postscript_record = false;
+            self
+        }
+
         fn bytes(&self) -> Vec<u8> {
             self.bytes_at(0)
         }
@@ -512,8 +532,10 @@ mod tests {
                 (1, 1, self.family.as_str()),
                 (1, 2, subfamily),
                 (self.full_encoding, 4, self.full.as_str()),
-                (1, 6, self.postscript.as_str()),
             ];
+            if self.postscript_record {
+                names.push((1, 6, self.postscript.as_str()));
+            }
             if let Some(typographic) = &self.typographic {
                 names.push((1, 16, typographic.as_str()));
             }
@@ -575,19 +597,30 @@ mod tests {
         }
     }
 
-    /// A TrueType collection of one real font followed by a face that does not parse.
-    fn collection_with_broken_second_face(first: &TestFont) -> Vec<u8> {
-        let header_len = 12 + 4 * 2;
-        let font = first.bytes_at(header_len);
-        let broken_offset = header_len + font.len();
+    /// A TrueType collection of the given faces; `None` is a face that does not parse.
+    fn collection(faces: &[Option<&TestFont>]) -> Vec<u8> {
+        let header_len = 12 + 4 * faces.len();
+        let mut offsets = Vec::new();
+        let mut body = Vec::new();
+        for face in faces {
+            let offset = header_len + body.len();
+            offsets.push(offset as u32);
+            match face {
+                Some(font) => body.extend_from_slice(&font.bytes_at(offset)),
+                None => body.extend_from_slice(&[0xff; 16]),
+            }
+            while body.len() % 4 != 0 {
+                body.push(0);
+            }
+        }
         let mut file = Vec::new();
         file.extend_from_slice(b"ttcf");
         file.extend_from_slice(&0x0001_0000u32.to_be_bytes());
-        file.extend_from_slice(&2u32.to_be_bytes());
-        file.extend_from_slice(&(header_len as u32).to_be_bytes());
-        file.extend_from_slice(&(broken_offset as u32).to_be_bytes());
-        file.extend_from_slice(&font);
-        file.extend_from_slice(&[0xff; 16]);
+        file.extend_from_slice(&(faces.len() as u32).to_be_bytes());
+        for offset in offsets {
+            file.extend_from_slice(&offset.to_be_bytes());
+        }
+        file.extend_from_slice(&body);
         file
     }
 
@@ -1073,12 +1106,10 @@ mod tests {
         );
         let shared = dir.write(
             "Mono-Bold-Other.ttc",
-            &collection_with_broken_second_face(&TestFont::new(
-                "Other Sans",
-                "Regular",
-                400,
-                false,
-            )),
+            &collection(&[
+                Some(&TestFont::new("Other Sans", "Regular", 400, false)),
+                None,
+            ]),
         );
         let mut db = database(&[&regular]);
         let registry = [
@@ -1087,6 +1118,60 @@ mod tests {
         ];
         load_registry_fonts(&mut db, &registry);
         assert_eq!(db.len(), 2, "the parseable face of the collection loads");
+
+        let (found, allowed) = resolve(&db, &registry, "Example Mono");
+        assert!(found.is_empty());
+        assert!(allowed.is_empty());
+    }
+
+    #[test]
+    fn a_partly_loaded_registry_file_counts_when_its_name_lists_the_family_later() {
+        let dir = TempDir::new("partial collection reordered");
+        let regular = dir.write(
+            "Mono-Regular.ttf",
+            &TestFont::new("Example Mono", "Regular", 400, false).bytes(),
+        );
+        let shared = dir.write(
+            "Other-Mono-Bold.ttc",
+            &collection(&[
+                Some(&TestFont::new("Other Sans", "Regular", 400, false)),
+                None,
+            ]),
+        );
+        let mut db = database(&[&regular]);
+        let registry = [
+            registry_font("Example Mono (TrueType)", &regular),
+            registry_font("Other Sans & Example Mono Bold (TrueType)", &shared),
+        ];
+        load_registry_fonts(&mut db, &registry);
+
+        let (found, allowed) = resolve(&db, &registry, "Example Mono");
+        assert!(found.is_empty());
+        assert!(allowed.is_empty());
+    }
+
+    #[test]
+    fn a_face_that_did_not_load_counts_when_its_own_names_declare_the_family() {
+        let dir = TempDir::new("partial collection unnamed");
+        let regular = dir.write(
+            "Mono-Regular.ttf",
+            &TestFont::new("Example Mono", "Regular", 400, false).bytes(),
+        );
+        // fontdb skips the bold face (no PostScript name), and the registry name doesn't say Mono.
+        let shared = dir.write(
+            "Shared.ttc",
+            &collection(&[
+                Some(&TestFont::new("Other Sans", "Regular", 400, false)),
+                Some(&TestFont::new("Example Mono", "Bold", 700, false).without_postscript()),
+            ]),
+        );
+        let mut db = database(&[&regular]);
+        let registry = [
+            registry_font("Example Mono (TrueType)", &regular),
+            registry_font("Shared Collection (TrueType)", &shared),
+        ];
+        load_registry_fonts(&mut db, &registry);
+        assert_eq!(db.len(), 2, "fontdb loads only the named face of the collection");
 
         let (found, allowed) = resolve(&db, &registry, "Example Mono");
         assert!(found.is_empty());
