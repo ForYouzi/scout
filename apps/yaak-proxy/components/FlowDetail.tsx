@@ -32,7 +32,7 @@ export function FlowDetail({ style, sideBySide }: { style?: CSSProperties; sideB
               <span>Pause or resume recording</span>
               <Keys keys={["⌘", "R"]} />
               <span>Clear flows</span>
-              <Keys keys={["⌘", "K"]} />
+              <Keys keys={["⌘", "⇧", "K"]} />
             </div>
           </EmptyState>
         ) : flow.tunnelled ? (

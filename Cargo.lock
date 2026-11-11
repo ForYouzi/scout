@@ -11577,6 +11577,7 @@ dependencies = [
 name = "yaak-commands"
 version = "0.0.0"
 dependencies = [
+ "rusqlite",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
@@ -11947,12 +11948,14 @@ dependencies = [
  "r2d2_sqlite",
  "reqwest",
  "rusqlite",
+ "rustls",
  "sea-query",
  "serde",
  "serde_json",
  "system-configuration",
  "tempfile",
  "tokio",
+ "tokio-rustls",
  "tonic",
  "tonic-reflection",
  "ts-rs",

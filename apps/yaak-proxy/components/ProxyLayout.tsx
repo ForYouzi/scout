@@ -1,5 +1,6 @@
 import {
   HeaderSize,
+  HeaderTint,
   IconButton,
   SidebarLayout,
   SplitLayout,
@@ -12,8 +13,12 @@ import { useState } from "react";
 import { useLocalStorage } from "react-use";
 import { flowLayoutAtom } from "../lib/atoms";
 import { setupIncomplete } from "../lib/firstRun";
-import { lockedAtom, noFlowsAtom, systemProxyEverOnAtom } from "../lib/store";
+import { useMenuExportHar } from "../lib/flowActions";
+import { useNavigationControls } from "../lib/navigation";
+import { proxyStatusOf, statusTintColor } from "../lib/proxyStatus";
+import { lockedAtom, noFlowsAtom, proxyStateAtom, systemProxyEverOnAtom } from "../lib/store";
 import { getOsType } from "../lib/tauri";
+import { AddColumnDialog } from "./AddColumnDialog";
 import { ClearFlowsButton } from "./ClearFlowsButton";
 import { FirstRun } from "./FirstRun";
 import { FlowDetail } from "./FlowDetail";
@@ -24,7 +29,7 @@ import { HelperDialog } from "./HelperDialog";
 import { SaveDialog } from "./SaveDialog";
 import { SavedSearchDialog } from "./SavedSearchDialog";
 import { SearchBar } from "./SearchBar";
-import { SettingsWindow, useOpenSettings } from "./Settings";
+import { SettingsDialogFallback, useOpenSettings } from "./Settings";
 import { Sidebar } from "./Sidebar";
 import { TakeOverBanner } from "./TakeOverBanner";
 
@@ -32,6 +37,8 @@ export function ProxyLayout() {
   const os = getOsType();
   const [flowLayout, setFlowLayout] = useAtom(flowLayoutAtom);
   const openSettings = useOpenSettings();
+  useMenuExportHar();
+  useNavigationControls();
   const [sidebarWidth, setSidebarWidth] = useLocalStorage("sidebar_width", 250);
   const [sidebarHidden, setSidebarHidden] = useLocalStorage("sidebar_hidden", false);
   const [floatingSidebarHidden, setFloatingSidebarHidden] = useLocalStorage(
@@ -40,6 +47,7 @@ export function ProxyLayout() {
   );
   const [floating, setFloating] = useState(false);
   const isHidden = floating ? (floatingSidebarHidden ?? true) : (sidebarHidden ?? false);
+  const tint = statusTintColor(proxyStatusOf(useAtomValue(proxyStateAtom)));
 
   return (
     <div
@@ -57,6 +65,7 @@ export function ProxyLayout() {
         interfaceScale={1}
         className="x-theme-appHeader bg-surface"
       >
+        <HeaderTint color={tint} animate />
         {/* Yaak's silhouette: the sidebar toggle and the state pill where Yaak has the toggle and
             the environment, the search where it names the request, then its icons. Only the
             controls take the pointer: everything around them, the traffic lights' corner
@@ -164,8 +173,9 @@ export function ProxyLayout() {
       </SidebarLayout>
       <SaveDialog />
       <SavedSearchDialog />
+      <AddColumnDialog />
       <HelperDialog />
-      <SettingsWindow />
+      <SettingsDialogFallback />
       <Toasts />
     </div>
   );
@@ -180,10 +190,9 @@ export function ProxyLayout() {
 function FlowsOrFirstRun({ flowLayout }: { flowLayout: SplitLayoutLayout }) {
   const locked = useAtomValue(lockedAtom);
   const noFlows = useAtomValue(noFlowsAtom) || locked != null;
-  const { caStatus, systemProxy } = useProxySetup();
+  const { systemProxy } = useProxySetup();
   const systemProxyEverOn = useAtomValue(systemProxyEverOnAtom);
   const incomplete = setupIncomplete({
-    trusted: caStatus.data?.trusted ?? null,
     systemProxySupported: systemProxy.data?.supported ?? null,
     systemProxyEverOn,
   });

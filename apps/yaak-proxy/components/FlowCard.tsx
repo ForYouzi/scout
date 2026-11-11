@@ -6,6 +6,7 @@ import {
   Dropdown,
   EmptyStateText,
   type ExtraPaneTab,
+  FormUrlencodedEditor,
   type HttpBodyResult,
   HttpRequestPaneView,
   HttpResponsePaneView,
@@ -13,14 +14,14 @@ import {
   IconButton,
   parseCookieHeaders,
   ResponseCookies,
-  type ResponseViewMode,
   SplitLayout,
   Tooltip,
 } from "@yaakapp-internal/ui";
 import classNames from "classnames";
-import { useSetAtom } from "jotai";
-import { useCallback, useMemo, useState } from "react";
-import { BODY_TYPE_BINARY } from "@yaakapp-internal/ui/httpTypes";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
+import { useCallback, useMemo } from "react";
+import { BODY_TYPE_FORM_URLENCODED } from "@yaakapp-internal/ui/httpTypes";
+import { placeTabsAtom } from "../lib/atoms";
 import { findHeader } from "../lib/body";
 import {
   browserTabMemory,
@@ -48,6 +49,7 @@ import {
   flowResponseToView,
 } from "../lib/flowViews";
 import { messagesTabLabel } from "../lib/messages";
+import { goToPlace } from "../lib/navigation";
 import { FlowBodyViewer, useFlowBody } from "./FlowBodyViewer";
 import { FlowInfo } from "./FlowInfo";
 import { FlowRequestBody } from "./FlowRequestBody";
@@ -86,16 +88,24 @@ export function FlowCard({ flow, listBeside }: { flow: Flow; listBeside: boolean
   );
 }
 
-/** The tab a half opens on, and learning from the ones chosen by hand */
+/**
+ * The tab a half opens on, and learning from the ones chosen by hand. The tab chosen is part of
+ * the window's place, so going back to it, or reloading, opens it again.
+ */
 function useShapeTab(pane: FlowPane, flow: Flow, available: string[]) {
+  const store = useStore();
   const memory = browserTabMemory();
+  const activeTab = useAtomValue(placeTabsAtom)[pane];
   // Read again for every flow, so a tab learned on one opens the next of its shape
   const defaultTab = defaultTabFor(pane, flow, available, memory);
   const onTabChange = useCallback(
-    (tab: string) => learnTab(pane, flow, tab, memory),
-    [pane, flow, memory],
+    (tab: string) => {
+      learnTab(pane, flow, tab, memory);
+      goToPlace(store, "update", { tabs: { ...store.get(placeTabsAtom), [pane]: tab } });
+    },
+    [pane, flow, memory, store],
   );
-  return { defaultTab, onTabChange };
+  return { activeTab, defaultTab, onTabChange };
 }
 
 /** A body read through the engine's body RPC, as the shared panes' loaders ask for it */
@@ -133,7 +143,6 @@ function FlowRequestHalf({ flow }: { flow: Flow }) {
         tab: {
           value: REQUEST_TAB_COOKIES,
           label: "Cookies",
-          empty: sentCount === 0,
           rightSlot: <CountBadge count={sentCount} />,
         },
         content: <ResponseCookies response={cookies} side="sent" />,
@@ -148,30 +157,49 @@ function FlowRequestHalf({ flow }: { flow: Flow }) {
     ...(request.auth == null ? [] : [REQUEST_TAB_AUTH]),
     REQUEST_TAB_COOKIES,
   ];
-  const { defaultTab, onTabChange } = useShapeTab("request", flow, available);
+  const { activeTab, defaultTab, onTabChange } = useShapeTab("request", flow, available);
+
+  const forceUpdateKey = `${flow.updatedAt}.${body.data == null ? "" : "loaded"}`;
 
   return (
     <HttpRequestPaneView
-      className="px-3"
+      // Padded below as the response half's tabs are, so their content, and the actions bar
+      // over it, sit the same distance from the card's edges
+      className="px-3 pb-3"
       request={request}
       fullHeight
-      dimEmptyTabs
-      forceUpdateKey={`${flow.updatedAt}.${body.data == null ? "" : "loaded"}`}
+      forceUpdateKey={forceUpdateKey}
       tabsStorageKey="proxy_request_tabs"
       bodyLoader={loader}
       extraTabs={extraTabs}
       defaultTab={defaultTab}
+      activeTab={activeTab}
       onTabChange={onTabChange}
       urlLine={<UrlLine flow={flow} />}
-      renderBody={(editor) => (
+      renderBody={() => (
         <FlowRequestBody
           body={body}
-          editor={editor}
-          // The proxy's own viewer, with its hexdump and save, rather than a size alone
-          binaryViewer={
-            request.bodyType === BODY_TYPE_BINARY ? (
-              <FlowBodyViewer flow={flow} which="request" pretty />
-            ) : null
+          // The response's viewer choice, with the form's fields as a URL-encoded body's
+          // formatted view, the switch in one bar with their bulk-view toggle
+          viewer={
+            <FlowBodyViewer
+              flow={flow}
+              which="request"
+              form={
+                request.bodyType === BODY_TYPE_FORM_URLENCODED
+                  ? (actions) => (
+                      <FormUrlencodedEditor
+                        readOnly
+                        requestId={request.id}
+                        form={request.body.form}
+                        forceUpdateKey={forceUpdateKey}
+                        actions={actions}
+                      />
+                    )
+                  : undefined
+              }
+              hideCutNote
+            />
           }
           requestSize={flow.requestSize}
         />
@@ -199,7 +227,6 @@ function UrlLine({ flow }: { flow: Flow }) {
 }
 
 function FlowResponseHalf({ flow, className }: { flow: Flow; className: string }) {
-  const [viewMode, setViewMode] = useState<ResponseViewMode>("pretty");
   // A stream's body is its messages, read by the Messages tab; reading it whole again on every
   // message would only hold copies of it
   const loadBody = flow.streamKind == null;
@@ -231,7 +258,6 @@ function FlowResponseHalf({ flow, className }: { flow: Flow; className: string }
               tab: {
                 value: RESPONSE_TAB_MESSAGES,
                 label: messagesLabel,
-                empty: flow.messageCount === 0,
                 rightSlot: (
                   <CountBadge
                     count={flow.messageCount}
@@ -255,29 +281,25 @@ function FlowResponseHalf({ flow, className }: { flow: Flow; className: string }
     RESPONSE_TAB_INFO,
     ...(messagesLabel == null ? [] : [RESPONSE_TAB_MESSAGES]),
   ];
-  const { defaultTab, onTabChange } = useShapeTab("response", flow, available);
+  const { activeTab, defaultTab, onTabChange } = useShapeTab("response", flow, available);
   const saved = flow.savedRequestId != null;
 
   return (
     <HttpResponsePaneView
       bare
       requestShownApart
-      dimEmptyTabs
       className={classNames(className, "border-border-subtle")}
       response={response}
       body={loader}
       requestBody={null}
       emptyState={<EmptyStateText>Waiting for a response</EmptyStateText>}
-      viewMode={viewMode}
-      onViewModeChange={setViewMode}
       tabsStorageKey="proxy_response_tabs"
       activeTabKey={flow.id}
       defaultTab={defaultTab}
+      activeTab={activeTab}
       onTabChange={onTabChange}
       extraTabs={extraTabs}
-      renderBodyViewer={() => (
-        <FlowBodyViewer flow={flow} which="response" pretty={viewMode === "pretty"} />
-      )}
+      renderBodyViewer={() => <FlowBodyViewer flow={flow} which="response" />}
       statusLineCenter={
         flow.responseTruncated ? (
           <span

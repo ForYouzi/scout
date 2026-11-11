@@ -1,15 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { formatSize } from "@yaakapp-internal/lib/formatSize";
-import type {
-  HttpVersion,
-  SystemProxyStatus,
-  TrafficRetention,
-} from "@yaakapp-internal/proxy-lib";
+import type { HttpVersion, SystemProxyStatus, TrafficRetention } from "@yaakapp-internal/proxy-lib";
 import {
   Button,
   Dialog,
   DialogFooter,
-  Heading,
   Icon,
   RadioDropdown,
   SettingRow,
@@ -19,14 +14,15 @@ import {
   SettingSelectControl,
   SettingSnippet,
   SettingsList,
+  SettingsPage,
   SettingsSection,
-  VStack,
 } from "@yaakapp-internal/ui";
-import { useAtomValue, useSetAtom, useStore } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useState } from "react";
 import { useRpcMutation } from "../hooks/useRpcMutation";
 import { useRpcQuery } from "../hooks/useRpcQuery";
 import { helperDialogOpenAtom } from "../lib/atoms";
+import { confirmClearFlowsAtom } from "../lib/clearFlows";
 import {
   defaultShell,
   environmentBlock,
@@ -62,11 +58,7 @@ export function SettingsProxy() {
   const elsewhere = proxyState?.otherOwner != null;
 
   return (
-    <VStack space={1.5} className="mb-4">
-      <div className="mb-3">
-        <Heading>Proxy</Heading>
-        <p className="text-text-subtle">Listening, decryption, traffic and terminals</p>
-      </div>
+    <SettingsPage title="Proxy" description="Listening, decryption, traffic and terminals">
       <SettingsList className="space-y-8">
         <SettingsSection title="Proxy">
           <PortRow disabled={elsewhere} />
@@ -103,6 +95,7 @@ export function SettingsProxy() {
         <SettingsSection title="Traffic">
           <TrafficRow />
           {proxyState?.traffic === "keep" && <KeepTrafficRow />}
+          <ConfirmClearRow />
           <ResetRow />
         </SettingsSection>
 
@@ -110,7 +103,7 @@ export function SettingsProxy() {
           <TerminalRow />
         </SettingsSection>
       </SettingsList>
-    </VStack>
+    </SettingsPage>
   );
 }
 
@@ -267,6 +260,14 @@ function KeepTrafficRow() {
         />
       </div>
     </SettingRow>
+  );
+}
+
+/** Asking before Clear, which its dialog's "Don't ask again" turns off */
+function ConfirmClearRow() {
+  const [confirm, setConfirm] = useAtom(confirmClearFlowsAtom);
+  return (
+    <SettingRowBoolean title="Confirm before clearing" checked={confirm} onChange={setConfirm} />
   );
 }
 
