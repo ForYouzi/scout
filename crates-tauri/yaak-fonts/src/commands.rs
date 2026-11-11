@@ -171,12 +171,7 @@ fn select_files(db: &fontdb::Database, registry: &[RegistryFont], name: &str) ->
     };
     let family_key = family.to_lowercase();
 
-    // A registry entry of this family whose file yielded no face means a style is missing.
-    let in_db: HashSet<String> = db.faces().filter_map(face_path).map(path_key).collect();
-    let missing = registry.iter().any(|font| {
-        font.name.to_lowercase().starts_with(&family_key) && !in_db.contains(&path_key(&font.path))
-    });
-    if missing {
+    if !registry_complete(db, registry, &family_key) {
         return Vec::new();
     }
 
@@ -271,7 +266,77 @@ fn has_family(face: &fontdb::FaceInfo, family_key: &str) -> bool {
     face.families.iter().any(|(family, _)| family.to_lowercase() == family_key)
 }
 
+/// Whether every registry font that may belong to the family loaded completely. An entry may
+/// belong to it when its name starts with one of the family's names (fontdb's, or the legacy and
+/// typographic names its faces declare) or when its file holds a face of the family. Such a file
+/// must have loaded as many faces as it contains: a face that didn't load may be one of the
+/// family's styles, and registering the rest would leave that style out.
+fn registry_complete(db: &fontdb::Database, registry: &[RegistryFont], family_key: &str) -> bool {
+    let mut names: HashSet<String> = HashSet::from([family_key.to_string()]);
+    let mut family_files = HashSet::new();
+    // Per file: how many faces loaded, and the path fontdb read them from.
+    let mut loaded: HashMap<String, (usize, PathBuf)> = HashMap::new();
+    for face in db.faces() {
+        let Some(path) = face_path(face) else {
+            continue;
+        };
+        let key = path_key(path);
+        loaded.entry(key.clone()).or_insert_with(|| (0, path.to_path_buf())).0 += 1;
+        if has_family(face, family_key) {
+            family_files.insert(key);
+            for name in db.with_face_data(face.id, family_names).unwrap_or_default() {
+                names.insert(name.to_lowercase());
+            }
+        }
+    }
+
+    registry.iter().all(|font| {
+        let key = path_key(&font.path);
+        let entry = font.name.to_lowercase();
+        let relevant = family_files.contains(&key)
+            || names.iter().any(|name| entry.starts_with(name.as_str()));
+        if !relevant {
+            return true;
+        }
+        let (count, path) = match loaded.get(&key) {
+            Some((count, path)) => (*count, path.as_path()),
+            None => (0, font.path.as_path()),
+        };
+        faces_in_file(path) == Some(count)
+    })
+}
+
+/// How many faces a font file holds, from its header; None when the file can't be opened.
+fn faces_in_file(path: &Path) -> Option<usize> {
+    use std::io::Read;
+
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut header = [0u8; 12];
+    match file.read_exact(&mut header) {
+        Ok(()) if &header[0..4] == b"ttcf" => {
+            Some(u32::from_be_bytes([header[8], header[9], header[10], header[11]]) as usize)
+        }
+        _ => Some(1),
+    }
+}
+
+/// The family names a face declares: name IDs 1 (legacy family) and 16 (typographic family).
+fn family_names(data: &[u8], index: u32) -> Vec<String> {
+    names_with_ids(
+        data,
+        index,
+        &[
+            ttf_parser::name_id::FAMILY,
+            ttf_parser::name_id::TYPOGRAPHIC_FAMILY,
+        ],
+    )
+}
+
 fn full_names(data: &[u8], index: u32) -> Vec<String> {
+    names_with_ids(data, index, &[ttf_parser::name_id::FULL_NAME])
+}
+
+fn names_with_ids(data: &[u8], index: u32, ids: &[u16]) -> Vec<String> {
     let Ok(face) = ttf_parser::RawFace::parse(data, index) else {
         return Vec::new();
     };
@@ -283,7 +348,7 @@ fn full_names(data: &[u8], index: u32) -> Vec<String> {
     table
         .names
         .into_iter()
-        .filter(|name| name.name_id == ttf_parser::name_id::FULL_NAME)
+        .filter(|name| ids.contains(&name.name_id))
         .filter_map(|name| decode_name(&name))
         .collect()
 }
@@ -425,6 +490,11 @@ mod tests {
         }
 
         fn bytes(&self) -> Vec<u8> {
+            self.bytes_at(0)
+        }
+
+        /// The font's bytes when it starts `base` bytes into a file (table offsets are absolute).
+        fn bytes_at(&self, base: usize) -> Vec<u8> {
             let mut os2 = vec![0u8; 96];
             os2[0..2].copy_from_slice(&4u16.to_be_bytes());
             os2[4..6].copy_from_slice(&self.weight.to_be_bytes());
@@ -493,7 +563,7 @@ mod tests {
             for (tag, data) in &tables {
                 font.extend_from_slice(*tag);
                 font.extend_from_slice(&0u32.to_be_bytes());
-                font.extend_from_slice(&((header_len + body.len()) as u32).to_be_bytes());
+                font.extend_from_slice(&((base + header_len + body.len()) as u32).to_be_bytes());
                 font.extend_from_slice(&(data.len() as u32).to_be_bytes());
                 body.extend_from_slice(data);
                 while body.len() % 4 != 0 {
@@ -503,6 +573,22 @@ mod tests {
             font.extend_from_slice(&body);
             font
         }
+    }
+
+    /// A TrueType collection of one real font followed by a face that does not parse.
+    fn collection_with_broken_second_face(first: &TestFont) -> Vec<u8> {
+        let header_len = 12 + 4 * 2;
+        let font = first.bytes_at(header_len);
+        let broken_offset = header_len + font.len();
+        let mut file = Vec::new();
+        file.extend_from_slice(b"ttcf");
+        file.extend_from_slice(&0x0001_0000u32.to_be_bytes());
+        file.extend_from_slice(&2u32.to_be_bytes());
+        file.extend_from_slice(&(header_len as u32).to_be_bytes());
+        file.extend_from_slice(&(broken_offset as u32).to_be_bytes());
+        file.extend_from_slice(&font);
+        file.extend_from_slice(&[0xff; 16]);
+        file
     }
 
     /// A scratch folder whose path has spaces and a non-ASCII letter, as user font folders can.
@@ -954,5 +1040,56 @@ mod tests {
         .unwrap();
         assert!(found.is_empty());
         assert_eq!(allowed, 0);
+    }
+
+    #[test]
+    fn a_registry_entry_under_the_legacy_family_name_still_counts() {
+        let dir = TempDir::new("legacy registry name");
+        let regular = dir.write(
+            "Narrow.ttf",
+            &TestFont::new("Example Narrow", "Regular", 400, false)
+                .typographic("Example Collection")
+                .bytes(),
+        );
+        let broken = dir.write("Narrow-Bold.ttf", b"not a font");
+        let mut db = database(&[&regular]);
+        let registry = [
+            registry_font("Example Narrow (TrueType)", &regular),
+            registry_font("Example Narrow Bold (TrueType)", &broken),
+        ];
+        load_registry_fonts(&mut db, &registry);
+
+        let (found, allowed) = resolve(&db, &registry, "Example Collection");
+        assert!(found.is_empty());
+        assert!(allowed.is_empty());
+    }
+
+    #[test]
+    fn a_registry_file_that_loaded_only_some_faces_leaves_the_family_alone() {
+        let dir = TempDir::new("partial collection");
+        let regular = dir.write(
+            "Mono-Regular.ttf",
+            &TestFont::new("Example Mono", "Regular", 400, false).bytes(),
+        );
+        let shared = dir.write(
+            "Mono-Bold-Other.ttc",
+            &collection_with_broken_second_face(&TestFont::new(
+                "Other Sans",
+                "Regular",
+                400,
+                false,
+            )),
+        );
+        let mut db = database(&[&regular]);
+        let registry = [
+            registry_font("Example Mono (TrueType)", &regular),
+            registry_font("Example Mono Bold & Other Sans (TrueType)", &shared),
+        ];
+        load_registry_fonts(&mut db, &registry);
+        assert_eq!(db.len(), 2, "the parseable face of the collection loads");
+
+        let (found, allowed) = resolve(&db, &registry, "Example Mono");
+        assert!(found.is_empty());
+        assert!(allowed.is_empty());
     }
 }
