@@ -24,12 +24,12 @@ Scout builds leave out Yaak's auto-updater and license check; new versions are p
 Download the installer for your platform from [Releases](https://github.com/ForYouzi/scout/releases/latest).
 Each release includes a `SHA256SUMS` file to verify downloads (`shasum -a 256 -c SHA256SUMS`).
 
-| Platform | File |
-| --- | --- |
-| macOS (Apple Silicon) | `Scout_<version>_macos_aarch64.dmg` |
-| macOS (Intel) | `Scout_<version>_macos_x64.dmg` |
+| Platform              | File                                                                    |
+| --------------------- | ----------------------------------------------------------------------- |
+| macOS (Apple Silicon) | `Scout_<version>_macos_aarch64.dmg`                                     |
+| macOS (Intel)         | `Scout_<version>_macos_x64.dmg`                                         |
 | Windows (x64 / ARM64) | `Scout_<version>_windows_x64-setup.exe` / `..._windows_arm64-setup.exe` |
-| Linux (x64 / ARM64) | `Scout_<version>_linux_<x86_64\|aarch64>.deb`, `.rpm`, or `.AppImage` |
+| Linux (x64 / ARM64)   | `Scout_<version>_linux_<x86_64\|aarch64>.deb`, `.rpm`, or `.AppImage`   |
 
 Scout builds are not code-signed, so your OS will warn the first time you open them:
 
@@ -71,6 +71,11 @@ on a commit that is on `main`. The workflow builds macOS, Windows, and Linux ins
 `SHA256SUMS` as a GitHub Release. Pull requests that change the workflow run the same builds without publishing.
 
 Upstream `v*` tags are ignored, so syncing from Yaak never triggers a Scout release.
+
+GitHub can pause workflows on this fork when its Actions usage is high. The Actions tab then shows
+"Workflows are not currently being run on this fork", and nothing runs: no CI on pull requests or `main`,
+and a pushed `scout-v*` tag starts no release. A maintainer re-enables them from the Actions tab; the
+API cannot. A tag pushed while workflows were paused has to be pushed again, or released under a new version.
 
 ## Syncing with upstream
 
