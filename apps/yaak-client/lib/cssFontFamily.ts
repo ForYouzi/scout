@@ -28,11 +28,33 @@ export function cssFontFamily(name: string | null | undefined): string {
   return `"${escaped}"`;
 }
 
-/** Points the editor and interface font variables at the fonts chosen in settings. */
+/**
+ * One random token per window, so a fallback alias can never be the name of an installed family.
+ * An installed family with the alias's name would otherwise win over the files Scout registers.
+ */
+const ALIAS_TOKEN = Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) =>
+  byte.toString(36).padStart(2, "0"),
+).join("");
+
+/** The private family name Scout registers a font's own files under (see fontFallback.ts). */
+export function fallbackAlias(name: string): string {
+  return `Scout Fallback ${ALIAS_TOKEN} ${name}`;
+}
+
+/**
+ * Points the editor and interface font variables at the fonts chosen in settings. A name in
+ * `registered` has its files registered under its fallback alias, so the alias goes first and the
+ * chosen name stays as the fallback. Every other name is written exactly as before.
+ */
 export function applyFonts(
   style: CSSStyleDeclaration,
   fonts: { editorFont: string | null; interfaceFont: string | null },
+  registered: ReadonlySet<string> = new Set(),
 ) {
-  style.setProperty("--font-family-editor", cssFontFamily(fonts.editorFont));
-  style.setProperty("--font-family-interface", cssFontFamily(fonts.interfaceFont));
+  const value = (name: string | null) =>
+    name && registered.has(name)
+      ? `${cssFontFamily(fallbackAlias(name))}, ${cssFontFamily(name)}`
+      : cssFontFamily(name);
+  style.setProperty("--font-family-editor", value(fonts.editorFont));
+  style.setProperty("--font-family-interface", value(fonts.interfaceFont));
 }

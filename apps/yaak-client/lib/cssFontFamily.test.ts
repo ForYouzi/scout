@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vite-plus/test";
-import { applyFonts, cssFontFamily } from "./cssFontFamily";
+import { applyFonts, cssFontFamily, fallbackAlias } from "./cssFontFamily";
 
 describe("cssFontFamily", () => {
   test("quotes names that are not valid unquoted CSS", () => {
@@ -50,13 +50,19 @@ describe("cssFontFamily", () => {
 describe("applyFonts", () => {
   test("writes both fonts quoted and leaves the settings untouched", () => {
     const style = document.createElement("div").style;
-    const settings = Object.freeze({ editorFont: "Rec Mono St.Helens", interfaceFont: "Rec Sans Mt.Baker" });
+    const settings = Object.freeze({
+      editorFont: "Rec Mono St.Helens",
+      interfaceFont: "Rec Sans Mt.Baker",
+    });
 
     applyFonts(style, settings);
 
     expect(style.getPropertyValue("--font-family-editor")).toBe('"Rec Mono St.Helens"');
     expect(style.getPropertyValue("--font-family-interface")).toBe('"Rec Sans Mt.Baker"');
-    expect(settings).toEqual({ editorFont: "Rec Mono St.Helens", interfaceFont: "Rec Sans Mt.Baker" });
+    expect(settings).toEqual({
+      editorFont: "Rec Mono St.Helens",
+      interfaceFont: "Rec Sans Mt.Baker",
+    });
   });
 
   test("replaces the fonts on a later settings change", () => {
@@ -75,5 +81,39 @@ describe("applyFonts", () => {
 
     expect(style.getPropertyValue("--font-family-editor")).toBe("");
     expect(style.getPropertyValue("--font-family-interface")).toBe("");
+  });
+});
+
+describe("fallbackAlias", () => {
+  test("prefixes the name with one token per window, so it can't match an installed family", () => {
+    const alias = fallbackAlias("Rec Mono St.Helens Bold");
+    expect(alias).toMatch(/^Scout Fallback [a-z0-9]{8,} Rec Mono St\.Helens Bold$/);
+    const token = alias.split(" ")[2];
+    expect(fallbackAlias("Inter")).toBe(`Scout Fallback ${token} Inter`);
+  });
+});
+
+describe("applyFonts with registered font files", () => {
+  test("puts the alias first only for names whose files are registered", () => {
+    const style = document.createElement("div").style;
+    applyFonts(
+      style,
+      { editorFont: "Rec Mono St.Helens Bold", interfaceFont: "Inter" },
+      new Set(["Rec Mono St.Helens Bold"]),
+    );
+
+    expect(style.getPropertyValue("--font-family-editor")).toBe(
+      `"${fallbackAlias("Rec Mono St.Helens Bold")}", "Rec Mono St.Helens Bold"`,
+    );
+    expect(style.getPropertyValue("--font-family-interface")).toBe('"Inter"');
+  });
+
+  test("drops the alias again once the name is no longer registered", () => {
+    const style = document.createElement("div").style;
+    const fonts = { editorFont: "Rec Mono St.Helens Bold", interfaceFont: null };
+    applyFonts(style, fonts, new Set(["Rec Mono St.Helens Bold"]));
+    applyFonts(style, fonts, new Set());
+
+    expect(style.getPropertyValue("--font-family-editor")).toBe('"Rec Mono St.Helens Bold"');
   });
 });
