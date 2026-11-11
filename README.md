@@ -68,7 +68,8 @@ Scout builds are not code-signed, so your OS will warn the first time you open t
 Releases are built by [`.github/workflows/release-scout.yml`](.github/workflows/release-scout.yml).
 Push a tag named `scout-v<version>` (for example `scout-v2026.11.0`, or `scout-v2026.11.0-beta.1` for a prerelease)
 on a commit that is on `main`. The workflow builds macOS, Windows, and Linux installers, then publishes them with
-`SHA256SUMS` as a GitHub Release. Pull requests that change the workflow run the same builds without publishing.
+`SHA256SUMS` as a GitHub Release. The workflow runs only for a pushed `scout-v*` tag: pull requests and pushes to
+`main` run CI (`Lint and Test`), never release builds.
 
 Upstream `v*` tags are ignored, so syncing from Yaak never triggers a Scout release.
 
