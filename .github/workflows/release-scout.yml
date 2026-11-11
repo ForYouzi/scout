@@ -6,28 +6,17 @@ name: Release Scout
 #
 # - Tag `scout-v2026.11.0` on a commit in main -> stable release.
 # - Tag `scout-v2026.11.0-beta.1`             -> prerelease.
-# - Pull requests touching Scout packaging    -> build-only dry run, nothing is published.
 #
+# It runs only on a pushed `scout-v*` tag, like SonicTerm's release: no pull request or manual
+# runs, so release builds never spend Actions minutes outside a release.
 # Upstream `v*` tags (and their app/CLI release workflows) are never touched by this file.
 
 on:
   push:
     tags: ["scout-v*"]
-  pull_request:
-    paths:
-      - .github/workflows/release-scout.yml
-      - crates-tauri/yaak-app-client/tauri.scout.conf.json
-      - crates-tauri/yaak-app-client/scout.desktop
-      - crates-tauri/yaak-app-client/icons/scout/**
-      - crates-tauri/yaak-app-client/icons/scout.*
-  workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: release-scout-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   SCOUT_CONFIG: crates-tauri/yaak-app-client/tauri.scout.conf.json
@@ -35,7 +24,7 @@ env:
 jobs:
   validate:
     name: Validate release tag
-    if: github.repository == 'ForYouzi/scout' && github.event_name == 'push'
+    if: github.repository == 'ForYouzi/scout'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -75,10 +64,6 @@ jobs:
   build:
     name: Build ${{ matrix.os }} ${{ matrix.arch }}
     needs: validate
-    # Runs for tags (after validate passes) and for PR / manual dry runs (validate is skipped).
-    if: >-
-      always() && github.repository == 'ForYouzi/scout' &&
-      (needs.validate.result == 'success' || (github.event_name != 'push' && needs.validate.result == 'skipped'))
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 150
     strategy:
@@ -88,12 +73,54 @@ jobs:
         # macOS arm64 pool is capacity-constrained and cancels jobs it cannot place ("not acquired
         # by Runner of type hosted"), which would leave a release without its macOS installers.
         include:
-          - { os: macos, arch: aarch64, yaak_arch: arm64, runner: macos-15-intel, target: aarch64-apple-darwin, bundles: dmg }
-          - { os: macos, arch: x64, yaak_arch: x64, runner: macos-15-intel, target: x86_64-apple-darwin, bundles: dmg }
-          - { os: linux, arch: x86_64, yaak_arch: x64, runner: ubuntu-22.04, target: "", bundles: "deb,rpm,appimage" }
-          - { os: linux, arch: aarch64, yaak_arch: arm64, runner: ubuntu-22.04-arm, target: "", bundles: "deb,rpm,appimage" }
-          - { os: windows, arch: x64, yaak_arch: x64, runner: windows-latest, target: "", bundles: nsis }
-          - { os: windows, arch: arm64, yaak_arch: arm64, runner: windows-latest, target: aarch64-pc-windows-msvc, bundles: nsis }
+          - {
+              os: macos,
+              arch: aarch64,
+              yaak_arch: arm64,
+              runner: macos-15-intel,
+              target: aarch64-apple-darwin,
+              bundles: dmg,
+            }
+          - {
+              os: macos,
+              arch: x64,
+              yaak_arch: x64,
+              runner: macos-15-intel,
+              target: x86_64-apple-darwin,
+              bundles: dmg,
+            }
+          - {
+              os: linux,
+              arch: x86_64,
+              yaak_arch: x64,
+              runner: ubuntu-22.04,
+              target: "",
+              bundles: "deb,rpm,appimage",
+            }
+          - {
+              os: linux,
+              arch: aarch64,
+              yaak_arch: arm64,
+              runner: ubuntu-22.04-arm,
+              target: "",
+              bundles: "deb,rpm,appimage",
+            }
+          - {
+              os: windows,
+              arch: x64,
+              yaak_arch: x64,
+              runner: windows-latest,
+              target: "",
+              bundles: nsis,
+            }
+          - {
+              os: windows,
+              arch: arm64,
+              yaak_arch: arm64,
+              runner: windows-latest,
+              target: aarch64-pc-windows-msvc,
+              bundles: nsis,
+            }
     defaults:
       run:
         shell: bash
@@ -106,10 +133,7 @@ jobs:
         id: version
         env:
           TAG_VERSION: ${{ needs.validate.outputs.version }}
-          RUN_NUMBER: ${{ github.run_number }}
-        run: |
-          version="${TAG_VERSION:-0.0.0-pr.${RUN_NUMBER}}"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+        run: echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
 
       - uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1
         with:
@@ -124,7 +148,6 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           shared-key: scout-release-${{ matrix.os }}-${{ matrix.arch }}
-          save-if: ${{ github.event_name == 'push' }}
 
       - name: Install Linux dependencies
         if: matrix.os == 'linux'
@@ -243,7 +266,6 @@ jobs:
   publish:
     name: Publish GitHub Release
     needs: [validate, build]
-    if: github.repository == 'ForYouzi/scout' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/scout-v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # The only job with write access. It uploads the exact, checksummed asset set the read-only
