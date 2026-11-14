@@ -86,7 +86,7 @@ git fetch upstream
 git switch main && git merge upstream/main
 ```
 
-Scout-specific files are kept separate to keep merges small: the release workflow, `crates-tauri/yaak-app-client/tauri.scout.conf.json`, and `crates-tauri/yaak-app-client/icons/scout*`.
+Scout-specific files are kept separate to keep merges small: the release workflow, `CLAUDE.md`, `crates-tauri/yaak-app-client/tauri.scout.conf.json`, and `crates-tauri/yaak-app-client/icons/scout*`.
 
 ## Useful resources
 
