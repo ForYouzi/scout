@@ -346,10 +346,7 @@ async fn save_writes_the_request_into_yaak() {
     let saved = client.save(&flow.id, &target).await.unwrap();
     let dropped: Vec<&str> = saved.dropped_headers.iter().map(|h| h.name.as_str()).collect();
     assert!(dropped.contains(&"host") && dropped.contains(&"content-length"), "{dropped:?}");
-    assert_eq!(
-        saved.warnings,
-        vec!["The Authorization header is saved as captured, in plain text."]
-    );
+    assert_eq!(saved.warnings, vec!["The Authorization header is saved in plain text."]);
 
     // The row is in Yaak's database, written as a sync so a running Yaak picks it up.
     let request = query_manager.connect().get_http_request(&saved.request.id).unwrap();
@@ -443,7 +440,7 @@ async fn start_is_refused_while_another_process_owns_the_engine() {
     std::fs::write(dir.path().join("control.json"), serde_json::to_vec(&owner).unwrap()).unwrap();
 
     let err = ctx.start().unwrap_err();
-    assert!(err.contains("already running in the yaak CLI"), "{err}");
+    assert!(err.contains("already running in the CLI"), "{err}");
     assert_eq!(ctx.port(), None);
 
     daemon.kill().unwrap();
@@ -471,7 +468,7 @@ async fn the_app_takes_over_from_the_cli() {
 
     // The app opens onto the CLI's engine and cannot start its own.
     let app = ctx(dir.path(), client_dir.path());
-    assert!(app.serve_control_api().unwrap_err().contains("already running in the yaak CLI"));
+    assert!(app.serve_control_api().unwrap_err().contains("already running in the CLI"));
     let state = rpc(&app, "get_proxy_state", json!({})).await.unwrap();
     assert_eq!(state["state"], "stopped");
     assert_eq!(state["otherOwner"]["owner"], "cli");
@@ -936,15 +933,21 @@ async fn the_decrypt_list_reaches_the_cli_that_owns_the_engine() {
     let list = rpc(&app, "set_decrypt_list", json!({"entries": ["*"]})).await.unwrap();
     assert_eq!(list["entries"][0], json!({"entry": "*", "builtIn": false}));
 
-    // Decrypted, the request is a flow of its own: a 502, as nothing listens there.
+    // Decrypted, the request is a flow of its own: a 502, as the server hangs up on its TLS.
     let ca = std::fs::read(dir.path().join("ca/ca.pem")).unwrap();
-    let closed = TcpListener::bind("127.0.0.1:0").await.unwrap().local_addr().unwrap().port();
+    let hangs_up = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = hangs_up.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        loop {
+            drop(hangs_up.accept().await.unwrap());
+        }
+    });
     let client = reqwest::Client::builder()
         .proxy(reqwest::Proxy::all(format!("http://127.0.0.1:{}", cli.port().unwrap())).unwrap())
         .add_root_certificate(reqwest::Certificate::from_pem(&ca).unwrap())
         .build()
         .unwrap();
-    let url = format!("https://localhost:{closed}/forwarded");
+    let url = format!("https://localhost:{port}/forwarded");
     assert_eq!(client.get(&url).send().await.unwrap().status(), 502);
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
