@@ -50,7 +50,7 @@ describe("buildSidebarTree", () => {
 
   test("groups apps, programs by folder, sites and System", () => {
     expect((root.children ?? []).flatMap((c) => shape(c))).toEqual([
-      "All traffic 40",
+      "All Traffic 40",
       "Apps 3",
       "  node (fieldwork) 2",
       "    github.com 2",
@@ -215,13 +215,20 @@ describe("decrypting from the sidebar", () => {
   const root = buildSidebarTree([...flows, tunnel], 5);
   const items = itemsById(root);
 
-  test("Not decrypted follows All traffic while there are tunnelled flows", () => {
-    expect((root.children ?? []).slice(0, 2).map((c) => shape(c)[0])).toEqual([
-      "All traffic 5",
-      "Not decrypted 1",
-    ]);
-    expect(items.get("tunnelled")?.query).toBe("@is:tunnelled");
-    expect(itemsById(buildSidebarTree(flows, 4)).has("tunnelled")).toBe(false);
+  test("Encrypted comes last, after System, while there are encrypted connections", () => {
+    expect((root.children ?? []).map((c) => shape(c)[0]).at(-1)).toBe("Encrypted 1");
+    expect(items.get("encrypted")?.query).toBe("@is:encrypted");
+    expect(itemsById(buildSidebarTree(flows, 4)).has("encrypted")).toBe(false);
+  });
+
+  test("marks what is all encrypted, once something is decrypted", () => {
+    expect(items.get("host:bank.example.com")?.encryptedOnly).toBe(true);
+    expect(items.get("site:example.com")?.encryptedOnly).toBe(true);
+    // Slack has decrypted flows too
+    expect(items.get("app:Slack")?.encryptedOnly).toBeUndefined();
+    // In the first minute, when every row would be marked, none is
+    const onlyTunnels = itemsById(buildSidebarTree([tunnel], 1));
+    expect(onlyTunnels.get("host:bank.example.com")?.encryptedOnly).toBeUndefined();
   });
 
   test("hosts, sites and apps name what their menu's Decrypt covers", () => {
@@ -331,7 +338,7 @@ describe("saved searches", () => {
     ];
     const root = buildSidebarTree(flows, 4, saved);
     expect((root.children ?? []).slice(0, 2).flatMap((c) => shape(c))).toEqual([
-      "All traffic 4",
+      "All Traffic 4",
       "Saved 0",
       "  Errors 12",
       "  Stripe 0",

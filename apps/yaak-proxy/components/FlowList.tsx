@@ -55,6 +55,7 @@ import { compareFlows } from "../lib/flowWindow";
 import { countNewFlows, isAtEnd, resumesFollowing } from "../lib/follow";
 import { applyFilter, goToPlace } from "../lib/navigation";
 import { asOneTerm } from "../lib/query";
+import { connectionOf } from "../lib/encryptedCard";
 import { folderOf } from "../lib/search";
 import {
   columnPrefsAtom,
@@ -853,6 +854,9 @@ const FlowRow = memo(function FlowRow({
   // A failure's reason, or Cancelled, takes the type and size cells together, side by side.
   const typeAt = ids.indexOf("type");
   const spanReason = noResponse && typeAt !== -1 && ids[typeAt + 1] === "size";
+  // An encrypted connection has no path, so its host takes the room when Path is beside it.
+  const hostAt = ids.indexOf("host");
+  const spanHost = flow.tunnelled && hostAt !== -1 && ids[hostAt + 1] === "path";
   const sinceArrival = arrivedAt == null ? null : Date.now() - arrivedAt;
 
   return (
@@ -885,10 +889,16 @@ const FlowRow = memo(function FlowRow({
       <FlowMark flow={flow} />
       {columns.map((c) => {
         if (spanReason && c.id === "size") return null;
+        if (spanHost && c.id === "path") return null;
         return (
           // Names the cell's column for its menu, without a box of its own in the row's grid
           <div key={c.id} data-column={c.id} className="contents">
-            <FlowCell column={c.id} flow={flow} span={spanReason && c.id === "type"} />
+            <FlowCell
+              column={c.id}
+              flow={flow}
+              selected={selected}
+              span={(spanReason && c.id === "type") || (spanHost && c.id === "host")}
+            />
           </div>
         );
       })}
@@ -896,27 +906,46 @@ const FlowRow = memo(function FlowRow({
   );
 });
 
+/** Why an encrypted row is, for its mark's tooltip */
+function encryptedReason(flow: Flow): string {
+  switch (flow.tunnelReason) {
+    case "excluded":
+      return flow.tunnelExcludedBuiltIn || flow.tunnelExcludedBy == null
+        ? "Encrypted: excluded by default"
+        : `Encrypted: excluded by ${flow.tunnelExcludedBy}`;
+    case "rejected":
+      return "Encrypted: an app rejected the certificate";
+    default:
+      return "Encrypted: decryption is not enabled";
+  }
+}
+
 /**
- * One mark per row, by a fixed priority: failed, cancelled, not decrypted, streaming, cut, saved.
- * Its tooltip lists every state the flow has. Agent reads join it once the engine records them.
+ * One mark per row, by a fixed priority: rejected, failed, cancelled, encrypted, streaming, cut,
+ * saved. Its tooltip lists every state the flow has. Agent reads join it once the engine records
+ * them.
  */
 function FlowMark({ flow }: { flow: Flow }) {
   const open = isOpenStream(flow);
+  const rejected = flow.tlsRejected != null;
   const states: string[] = [];
-  if (flow.error != null) states.push(`Failed: ${flow.error}`);
+  if (rejected) states.push("Certificate rejected by the app");
+  else if (flow.error != null) states.push(`Failed: ${flow.error}`);
   if (flow.cancelled) states.push("Cancelled by the app");
-  if (flow.tunnelled) states.push("Not decrypted");
+  if (flow.tunnelled) states.push(encryptedReason(flow));
   if (open) states.push("Streaming");
-  if (flow.responseTruncated) states.push("Body cut at the capture limit");
+  if (flow.responseTruncated) states.push("Body truncated at the capture limit");
   if (flow.savedRequestId != null) states.push("Saved to Yaak");
   const mark = (
     <span className="flex items-center justify-center">
-      {flow.error != null ? (
+      {rejected ? (
+        <Icon icon="shield_off" size="sm" color="warning" />
+      ) : flow.error != null ? (
         <Icon icon="circle_alert" size="sm" color="danger" />
       ) : flow.cancelled ? (
         <Icon icon="circle_off" size="sm" className="text-text-subtlest" />
       ) : flow.tunnelled ? (
-        <Icon icon="lock" size="sm" className="text-text-subtlest" />
+        <Icon icon="lock" size="sm" className="text-text-subtle" />
       ) : open ? (
         <span aria-hidden className="w-[7px] h-[7px] rounded-full bg-info ring-3 ring-info/20" />
       ) : flow.responseTruncated ? (
@@ -958,7 +987,141 @@ function isOpenStream(flow: Flow): boolean {
   return flow.streamKind != null && flow.elapsedMs == null && flow.error == null && !flow.cancelled;
 }
 
-function FlowCell({ column, flow, span }: { column: ColumnId; flow: Flow; span: boolean }) {
+interface CellProps {
+  column: ColumnId;
+  flow: Flow;
+  /** Takes the next cell's room too */
+  span: boolean;
+  selected: boolean;
+}
+
+/**
+ * The text of an encrypted or refused row: told apart by colour alone, the faintest that stays
+ * readable on the row (subtle, 4.5:1 on the surface in both default themes), and the full text
+ * colour while selected, as subtle falls under that on the dark theme's selection. No opacity,
+ * so the app icon and the mark show as on any row.
+ */
+function quietText(selected: boolean): string {
+  return selected ? "text-text" : "text-text-subtle";
+}
+
+/** A row's number, in the quiet colour */
+function quietNumber(flow: Flow, selected: boolean): ReactElement {
+  return <span className={classNames(cell, mono, quietText(selected))}>{flow.number || ""}</span>;
+}
+
+/**
+ * An encrypted connection's cell: quiet, and only what is known, so its host, how much it
+ * carried and for how long; nothing read from inside it, so no method, path, status, type,
+ * query or field. Null for the cells that show as on any row, the app icon among them.
+ */
+function encryptedCell({ column, flow, span, selected }: CellProps): ReactElement | null {
+  const quiet = classNames(cell, mono, quietText(selected));
+  switch (column) {
+    case "app":
+    case "started":
+      return null;
+    case "number":
+      return quietNumber(flow, selected);
+    case "host": {
+      const { label } = connectionOf(flow);
+      return (
+        <Truncated text={label}>
+          <span
+            className={classNames(cell, "rtl text-left", span && "col-span-2", quietText(selected))}
+          >
+            <bdi>{label}</bdi>
+          </span>
+        </Truncated>
+      );
+    }
+    case "type":
+      // A tunnel that failed to reach the server keeps the failure look, across Type and Size
+      if (flow.error == null) return <span className={cell} />;
+      return (
+        <Tooltip wrap content={flow.error} delay={CONTROL_TOOLTIP_DELAY}>
+          <span className={classNames(cell, "text-danger text-xs", span && "col-span-2")}>
+            {flow.error}
+          </span>
+        </Tooltip>
+      );
+    case "size":
+      return (
+        <span className={classNames(quiet, "text-right")}>
+          {isOpenTunnel(flow) ? "" : formatSize(flow.responseSize)}
+        </span>
+      );
+    case "requestSize":
+      return (
+        <span className={classNames(quiet, "text-right")}>
+          {isOpenTunnel(flow) ? "" : formatSize(flow.requestSize)}
+        </span>
+      );
+    case "time": {
+      const ms = isOpenTunnel(flow)
+        ? Date.now() - Date.parse(utcTimestamp(flow.startedAt))
+        : flow.elapsedMs;
+      return (
+        <span className={classNames(quiet, "text-right")}>
+          {ms == null || !Number.isFinite(ms) ? "" : formatMillis(Math.max(0, ms))}
+        </span>
+      );
+    }
+    default:
+      return <span className={cell} />;
+  }
+}
+
+/**
+ * A refused handshake's cell: its host, number and time in the quiet colour, the refusal across
+ * Type and Size in warning, and nothing for the request it never made. Null for the cells that
+ * show as on any row, the app icon among them.
+ */
+function rejectedCell({ column, flow, span, selected }: CellProps): ReactElement | null {
+  switch (column) {
+    case "method":
+    case "path":
+    case "status":
+    case "query":
+    case "size":
+      return <span className={cell} />;
+    case "number":
+      return quietNumber(flow, selected);
+    case "host": {
+      const host = hostOf(flow.url);
+      return (
+        <Truncated text={host}>
+          <span className={classNames(cell, "rtl text-left", quietText(selected))}>
+            <bdi>{host}</bdi>
+          </span>
+        </Truncated>
+      );
+    }
+    case "time":
+      return (
+        <span className={classNames(cell, mono, "text-right", quietText(selected))}>
+          {flow.elapsedMs == null ? "" : formatMillis(flow.elapsedMs)}
+        </span>
+      );
+    case "type":
+      return (
+        <span className={classNames(cell, "text-warning text-xs", span && "col-span-2")}>
+          Rejected certificate
+        </span>
+      );
+    default:
+      return null;
+  }
+}
+
+function FlowCell(props: CellProps) {
+  const { column, flow, span } = props;
+  const special = flow.tunnelled
+    ? encryptedCell(props)
+    : flow.tlsRejected != null
+      ? rejectedCell(props)
+      : null;
+  if (special != null) return special;
   const failed = flow.error != null;
   const noResponse = (failed || flow.cancelled) && flow.status == null;
   switch (column) {
@@ -1005,10 +1168,6 @@ function FlowCell({ column, flow, span }: { column: ColumnId; flow: Flow; span: 
       );
     }
     case "path": {
-      // A tunnel's only path is its host; what it carried is unread.
-      if (flow.tunnelled) {
-        return <span className={classNames(cell, "text-text-subtlest")}>Not decrypted</span>;
-      }
       const path = pathOf(flow.url);
       if (flow.streamKind == null) {
         return (
@@ -1034,7 +1193,7 @@ function FlowCell({ column, flow, span }: { column: ColumnId; flow: Flow; span: 
       );
     }
     case "status":
-      return (flow.cancelled || flow.tunnelled) && flow.status == null ? (
+      return flow.cancelled && flow.status == null ? (
         <span className={classNames(cell, mono, "text-text-subtlest")}>--</span>
       ) : (
         <HttpStatusTagRaw status={flow.status ?? 0} short className={classNames(cell, mono)} />
@@ -1104,7 +1263,7 @@ function FlowCell({ column, flow, span }: { column: ColumnId; flow: Flow; span: 
         </span>
       );
     case "query": {
-      const query = flow.tunnelled ? "" : (urlParts(flow.url).query ?? "");
+      const query = urlParts(flow.url).query ?? "";
       return (
         <Truncated text={query}>
           <span className={classNames(cell, "text-text-subtle")}>{query}</span>
@@ -1210,9 +1369,9 @@ function useCellActions(): (flow: Flow, column: ColumnId) => DropdownItem[] {
           onSelect: async () => {
             try {
               await navigator.clipboard.writeText(value);
-              showToast({ message: "Copied value" });
+              showToast({ message: "Copied to clipboard" });
             } catch (err) {
-              showToast({ message: `Failed to copy value: ${String(err)}`, color: "danger" });
+              showToast({ message: `Failed to copy: ${String(err)}`, color: "danger" });
             }
           },
         });
